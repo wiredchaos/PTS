@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hermes Console</title><link rel="stylesheet" href="/styles.css"></head>
+<body>
+<header><span class="badge">Internal Workspace</span><h1>Hermes Console</h1><p>Internal AI operations layer for agent registry, review queues, evidence, and QA status.</p></header>
+<nav><a href="/dashboard.html">Dashboard</a><a href="/admin.html">Admin</a><a class="active" href="/hermes-console.html">Hermes</a><a href="/document-vault.html">Vault</a><a href="/audit-binder.html">Audit Binder</a></nav>
+<main>
+<section class="card card-cyan"><h2>Agent Registry</h2><p>Loads the live Hermes registry without exposing developer tools to clients.</p><button id="loadAgents">Load Hermes Agents</button><div id="agents" class="workflow-list"></div></section>
+<section class="pts-grid-3"><div class="card"><h3>Queued for Hermes Review</h3><p>Document intake waiting for orchestration.</p></div><div class="card"><h3>Needs Human Review</h3><p>Confidence, citations, or legal review flags require staff judgment.</p></div><div class="card"><h3>Audit Binder Ready</h3><p>Evidence package is ready for staff review.</p></div></section>
+</main>
+<script>
+const out=document.getElementById('agents');
+document.getElementById('loadAgents').addEventListener('click',async()=>{out.innerHTML='<div class="workflow-item"><b>Loading</b><span>Checking Hermes registry...</span></div>';try{const r=await fetch('/api/hermes/agent-registry');const d=await r.json();const agents=d.agents||d.registry||[];out.innerHTML=agents.map(a=>'<div class="workflow-item"><b>'+String(a.name||a.id||'Agent').replace(/[<>&]/g,'')+'</b><span>'+String(a.description||a.rule||'Registered').replace(/[<>&]/g,'')+'</span></div>').join('')||'<div class="workflow-item"><b>Hermes Ready</b><span>Registry returned successfully.</span></div>';}catch(e){out.innerHTML='<div class="workflow-item"><b>Unable to load</b><span>Check deployment or Hermes route.</span></div>';}});
+</script>
+</body></html>
