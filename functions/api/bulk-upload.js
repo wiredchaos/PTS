@@ -6,8 +6,8 @@ const MAX_FUTURE_TAX_YEAR_OFFSET = 2; // allows near-term planning/estimated fil
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  if (!env.DB || !env.UPLOADS) {
-    return jsonResponse(503, { ok: false, error: 'Missing DB or UPLOADS binding' });
+  if (!env.DB || !env.DOCS) {
+    return jsonResponse(503, { ok: false, error: 'Missing DB or DOCS binding' });
   }
 
   const form = await request.formData();
@@ -43,7 +43,7 @@ export async function onRequestPost(context) {
     try {
       const { extension, classification } = classifyDocument({ filename: file.name, mimeType: file.type });
       const storageKey = buildR2Key({ clientId, taxYear, filename: file.name });
-      await env.UPLOADS.put(storageKey, await file.arrayBuffer(), {
+      await env.DOCS.put(storageKey, await file.arrayBuffer(), {
         httpMetadata: { contentType: file.type || 'application/octet-stream' }
       });
 
