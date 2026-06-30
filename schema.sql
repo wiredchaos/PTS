@@ -103,4 +103,4 @@ CREATE INDEX IF NOT EXISTS idx_clients_case_type ON clients(case_type);
 
 -- Optional dev seed example. Keep client-specific examples in DB records only.
 INSERT OR IGNORE INTO clients (id, external_id, name, email, type, case_type)
-VALUES (1, 'client-david-crenshaw', 'David Crenshaw', 'david@example.com', 'individual', 'standard');
+VALUES (1, 'client-david-crenshaw', 'David Crenshaw', NULL, 'individual', 'standard');

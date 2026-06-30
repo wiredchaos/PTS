@@ -15,7 +15,7 @@ export async function onRequestPost(context) {
   if (!Number.isInteger(taxYear) || taxYear < 2000) return validationError('valid taxYear is required');
 
   const docs = await env.DB
-    .prepare('SELECT classification, processing_status FROM documents WHERE client_id = ? AND tax_year = ?')
+    .prepare('SELECT classification, processing_status, original_filename FROM documents WHERE client_id = ? AND tax_year = ?')
     .bind(clientId, taxYear)
     .all();
 
@@ -30,7 +30,12 @@ export async function onRequestPost(context) {
     classifications,
     workpaperStatus: processedCount === rows.length && rows.length > 0 ? 'ready' : 'in_progress'
   };
-  const missingDocuments = ['w2-or-1099', 'year-end-bank-statements'].filter((item) => !classifications.includes('spreadsheet'));
+  const filenames = rows.map((row) => String(row.original_filename || '').toLowerCase());
+  const hasW2Or1099 = filenames.some((name) => /(?:w[-_ ]?2|1099)/i.test(name));
+  const hasYearEndBankStatements = filenames.some((name) => name.includes('bank') && (name.includes('statement') || name.includes('statements')));
+  const missingDocuments = [];
+  if (!hasW2Or1099) missingDocuments.push('w2-or-1099');
+  if (!hasYearEndBankStatements) missingDocuments.push('year-end-bank-statements');
   const reconciliations = {
     highLevelReconciliation: rows.length > 0 ? 'partial' : 'pending',
     notes: 'Deterministic placeholder. Integrate credentialed systems when available.'

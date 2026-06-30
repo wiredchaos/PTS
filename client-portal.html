@@ -16,7 +16,7 @@
     <li><a href="/organizer.html">Complete Organizer</a></li>
     <li><a href="#tax-status">View Tax Status</a></li>
     <li><a href="/gamma-view.html">View Generated Gamma Presentation</a></li>
-    <li><a href="mailto:info@purnelltaxsolutions.example">Contact Purnell Tax Solutions</a></li>
+    <li><a href="/index.html#contact">Contact Purnell Tax Solutions</a></li>
   </ul></section>
   <section class="card" id="tax-status">
     <h2>Tax Status</h2>
@@ -29,9 +29,11 @@
 </main>
 <script>
 (async () => {
-  const clientId = new URLSearchParams(location.search).get('clientId');
+  const params = new URLSearchParams(location.search);
+  const clientId = params.get('clientId');
   if (!clientId) return;
-  const res = await fetch(`/api/client-guide?clientId=${encodeURIComponent(clientId)}`);
+  const taxYear = params.get('taxYear') || String(new Date().getUTCFullYear());
+  const res = await fetch(`/api/client-guide?clientId=${encodeURIComponent(clientId)}&taxYear=${encodeURIComponent(taxYear)}`);
   if (!res.ok) return;
   const data = await res.json();
   document.getElementById('tax-status-output').textContent = JSON.stringify(data, null, 2);

@@ -52,7 +52,12 @@ export function classifyDocument({ filename = '', mimeType = '' }) {
 }
 
 export function buildR2Key({ clientId, taxYear, filename }) {
-  const sanitized = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const now = Date.now();
-  return `clients/${clientId}/tax-year/${taxYear}/${now}-${sanitized}`;
+  const extension = parseExtension(filename);
+  const sanitizedExtension = extension.replace(/[^a-zA-Z0-9]/g, '');
+  const suffix = sanitizedExtension ? `.${sanitizedExtension}` : '';
+  const base = extension ? filename.slice(0, -(extension.length + 1)) : filename;
+  const sanitizedBase = base.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const sanitized = `${sanitizedBase}${suffix}`;
+  const uniqueId = crypto.randomUUID();
+  return `clients/${clientId}/tax-year/${taxYear}/${uniqueId}-${sanitized}`;
 }

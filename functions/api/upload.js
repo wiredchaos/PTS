@@ -2,6 +2,8 @@ import { classifyDocument, buildR2Key } from '../_lib/documents.js';
 import { jsonResponse, validationError } from '../_lib/http.js';
 import { ensureClientExists, insertDocument } from '../_lib/db.js';
 
+const MAX_FUTURE_TAX_YEAR_OFFSET = 2; // allows near-term planning/estimated filings
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   if (!env.DB || !env.UPLOADS) {
@@ -12,10 +14,11 @@ export async function onRequestPost(context) {
   const file = form.get('file');
   const clientId = Number(form.get('clientId'));
   const taxYear = Number(form.get('taxYear'));
+  const maxTaxYear = new Date().getUTCFullYear() + MAX_FUTURE_TAX_YEAR_OFFSET;
 
   if (!(file instanceof File)) return validationError('file is required');
   if (!Number.isInteger(clientId) || clientId <= 0) return validationError('valid clientId is required');
-  if (!Number.isInteger(taxYear) || taxYear < 2000) return validationError('valid taxYear is required');
+  if (!Number.isInteger(taxYear) || taxYear < 2000 || taxYear > maxTaxYear) return validationError('valid taxYear is required');
 
   const client = await ensureClientExists(env.DB, clientId);
   if (!client) return jsonResponse(404, { ok: false, error: 'Client not found' });

@@ -1,13 +1,17 @@
 import { jsonResponse, validationError } from '../_lib/http.js';
 
+const MAX_FUTURE_TAX_YEAR_OFFSET = 2; // allows near-term planning/estimated filings
+
 export async function onRequestGet(context) {
   const { env, request } = context;
   if (!env.DB) return jsonResponse(503, { ok: false, error: 'Missing DB binding' });
 
   const url = new URL(request.url);
   const clientId = Number(url.searchParams.get('clientId'));
-  const taxYear = Number(url.searchParams.get('taxYear') || new Date().getFullYear());
+  const taxYear = Number(url.searchParams.get('taxYear'));
+  const maxTaxYear = new Date().getUTCFullYear() + MAX_FUTURE_TAX_YEAR_OFFSET;
   if (!Number.isInteger(clientId) || clientId <= 0) return validationError('valid clientId is required');
+  if (!Number.isInteger(taxYear) || taxYear < 2000 || taxYear > maxTaxYear) return validationError('valid taxYear is required');
 
   const client = await env.DB.prepare('SELECT id, name, type, case_type, status FROM clients WHERE id = ?').bind(clientId).first();
   if (!client) return jsonResponse(404, { ok: false, error: 'Client not found' });
@@ -24,13 +28,15 @@ export async function onRequestGet(context) {
     { key: 'gamma_presentation', label: 'View Generated Gamma Presentation', done: false }
   ];
 
-  const flagsRaw = env.CONFIG_KV ? await env.CONFIG_KV.get('feature_flags') : null;
+  const featureFlagsRaw = env.CONFIG_KV ? await env.CONFIG_KV.get('feature_flags') : null;
   let flags = { gammaViewerEnabled: true, organizerEnabled: true };
-  if (flagsRaw) {
+  let featureFlagsWarning = null;
+  if (featureFlagsRaw) {
     try {
-      flags = JSON.parse(flagsRaw);
+      flags = JSON.parse(featureFlagsRaw);
     } catch {
       flags = { ...flags, invalidConfig: true };
+      featureFlagsWarning = 'feature_flags in KV is not valid JSON';
     }
   }
 
@@ -46,6 +52,7 @@ export async function onRequestGet(context) {
     },
     taxYear,
     checklist,
-    featureFlags: flags
+    featureFlags: flags,
+    featureFlagsWarning
   });
 }
