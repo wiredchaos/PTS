@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Universal Processor</title><link rel="stylesheet" href="/styles.css"></head>
+<body>
+<header><h1>Universal Processor</h1></header>
+<nav>
+  <a href="/index.html">Home</a>
+  <a href="/admin.html">Admin</a>
+  <a href="/universal-processor.html">Universal Processor</a>
+</nav>
+<main><section class="card"><h2>Document Processing</h2><form id="processor"><input type="number" name="documentId" placeholder="Document ID" required><button>Process</button></form><pre id="output"></pre></section></main>
+<script>
+document.getElementById('processor').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const documentId = Number(new FormData(e.target).get('documentId'));
+  const res = await fetch('/api/process-document', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ documentId })});
+  document.getElementById('output').textContent = JSON.stringify(await res.json(), null, 2);
+});
+</script>
+</body>
+</html>

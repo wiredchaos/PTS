@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Client Portal</title><link rel="stylesheet" href="/styles.css"></head>
+<body>
+<header><h1>Client Portal</h1></header>
+<nav>
+  <a href="/index.html">Home</a>
+  <a href="/client-portal.html">Client Portal</a>
+  <a href="/upload.html">Upload Documents</a>
+  <a href="/organizer.html">Complete Organizer</a>
+  <a href="/gamma-view.html">View Generated Gamma Presentation</a>
+</nav>
+<main>
+  <section class="card"><h2>Quick Actions</h2><ul>
+    <li><a href="/upload.html">Upload Documents</a></li>
+    <li><a href="/organizer.html">Complete Organizer</a></li>
+    <li><a href="#tax-status">View Tax Status</a></li>
+    <li><a href="/gamma-view.html">View Generated Gamma Presentation</a></li>
+    <li><a href="/index.html#contact">Contact Purnell Tax Solutions</a></li>
+  </ul></section>
+  <section class="card" id="tax-status">
+    <h2>Tax Status</h2>
+    <pre id="tax-status-output">Add ?clientId=123 to URL to load status.</pre>
+  </section>
+  <section class="card" id="resolution-link" hidden>
+    <h2>Resolution Client</h2>
+    <p><a href="/resolution-guide.html">Open Resolution Guide</a></p>
+  </section>
+</main>
+<script>
+(async () => {
+  const params = new URLSearchParams(location.search);
+  const clientId = params.get('clientId');
+  if (!clientId) return;
+  const taxYear = params.get('taxYear') || String(new Date().getUTCFullYear());
+  const res = await fetch(`/api/client-guide?clientId=${encodeURIComponent(clientId)}&taxYear=${encodeURIComponent(taxYear)}`);
+  if (!res.ok) return;
+  const data = await res.json();
+  document.getElementById('tax-status-output').textContent = JSON.stringify(data, null, 2);
+  if (data?.client?.showResolutionGuide) {
+    document.getElementById('resolution-link').hidden = false;
+  }
+})();
+</script>
+</body>
+</html>
