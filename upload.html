@@ -1,32 +1,79 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Upload Documents</title><link rel="stylesheet" href="/styles.css"></head>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Upload Client Documents</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
 <body>
-<header><h1>Universal Document Upload</h1></header>
-<nav>
-  <a href="/index.html">Home</a>
-  <a href="/client-portal.html">Client Portal</a>
-  <a href="/upload.html">Upload</a>
-</nav>
-<main>
-  <section class="card">
-    <h2>Single Upload</h2>
-    <form id="single-form"><input name="clientId" type="number" placeholder="Client ID" required><input name="taxYear" type="number" placeholder="Tax Year" required><input name="file" type="file" required><button>Upload</button></form>
-  </section>
-  <section class="card">
-    <h2>Bulk Upload</h2>
-    <form id="bulk-form"><input name="clientId" type="number" placeholder="Client ID" required><input name="taxYear" type="number" placeholder="Tax Year" required><input name="files" type="file" multiple required><button>Bulk Upload</button></form>
-  </section>
-  <pre id="output"></pre>
-</main>
-<script>
-async function submitForm(form, endpoint) {
-  const out = document.getElementById('output');
-  const res = await fetch(endpoint, { method: 'POST', body: new FormData(form) });
-  out.textContent = JSON.stringify(await res.json(), null, 2);
-}
-document.getElementById('single-form').addEventListener('submit', (e) => { e.preventDefault(); submitForm(e.target, '/api/upload'); });
-document.getElementById('bulk-form').addEventListener('submit', (e) => { e.preventDefault(); submitForm(e.target, '/api/bulk-upload'); });
-</script>
+  <header>
+    <h1>Upload Client Documents</h1>
+    <p>Upload one client document and queue it for review.</p>
+  </header>
+  <nav>
+    <a href="/index.html">Home</a>
+    <a href="/client-portal.html">Client Portal</a>
+    <a href="/upload.html">Upload</a>
+  </nav>
+  <main>
+    <section class="card">
+      <h2>Upload Document</h2>
+      <form id="upload-form">
+        <label>Client ID<br><input name="clientId" type="number" min="1" placeholder="Client ID" required></label><br><br>
+        <label>Tax Year<br><input name="taxYear" type="number" min="2000" max="2100" placeholder="Tax Year" required></label><br><br>
+        <label>Choose File<br><input name="file" type="file" required></label><br><br>
+        <button id="upload-button" type="submit">Upload Document</button>
+      </form>
+      <div id="status" class="card" style="margin-top:1rem;">Ready to upload.</div>
+    </section>
+  </main>
+  <script>
+    const form = document.getElementById('upload-form');
+    const button = document.getElementById('upload-button');
+    const statusBox = document.getElementById('status');
+
+    function clean(value) {
+      return String(value || '').replace(/[<>&]/g, '');
+    }
+
+    function show(message) {
+      statusBox.innerHTML = message;
+    }
+
+    form.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      button.disabled = true;
+      button.textContent = 'Uploading...';
+      show('Uploading...');
+
+      try {
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: new FormData(form)
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || 'Upload failed. Please try again.');
+        }
+
+        const doc = data.document || {};
+        show(
+          '<strong>Upload complete.</strong><br>' +
+          'Document queued for Hermes review.<br><br>' +
+          '<strong>File:</strong> ' + clean(doc.filename) + '<br>' +
+          '<strong>Tax Year:</strong> ' + clean(doc.taxYear) + '<br>' +
+          '<strong>Status:</strong> ' + clean(doc.processingStatus || 'queued')
+        );
+        form.reset();
+      } catch (error) {
+        show('<strong>Upload could not be completed.</strong><br>' + clean(error.message));
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Upload Document';
+      }
+    });
+  </script>
 </body>
 </html>
