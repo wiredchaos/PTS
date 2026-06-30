@@ -4,8 +4,8 @@ export async function onRequestGet(context) {
   const env = context.env || {};
   const checks = {
     d1: Boolean(env.DB),
-    r2: Boolean(env.UPLOADS),
-    kv: Boolean(env.CONFIG_KV)
+    r2: Boolean(env.DOCS),
+    kv: Boolean(env.PTS_KV)
   };
 
   return jsonResponse(200, {
