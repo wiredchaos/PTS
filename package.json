@@ -6,7 +6,7 @@
   "scripts": {
     "build": "echo 'Static Cloudflare Pages build: no build step required'",
     "test": "node --test",
-    "lint": "node --check functions/_lib/*.js functions/api/*.js"
+    "lint": "node --check functions/_lib/*.js functions/_lib/agents/*.js functions/api/*.js functions/api/hermes/*.js functions/api/hermes/status/*.js functions/api/hermes/history/*.js functions/api/hermes/cache/*.js"
   },
   "engines": {
     "node": ">=20"
