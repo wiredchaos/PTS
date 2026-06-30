@@ -3,72 +3,73 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Upload Client Documents</title>
+  <title>Upload Client Documents | PTS Portal</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <header>
+    <span class="badge">Secure Client Intake</span>
     <h1>Upload Client Documents</h1>
-    <p>Upload one client document and queue it for review.</p>
+    <p>Send documents to Purnell Tax Solutions and queue them for Hermes Review. Simple for clients, structured for tax operations.</p>
   </header>
   <nav>
-    <a href="/index.html">Home</a>
-    <a href="/client-portal.html">Client Portal</a>
-    <a href="/upload.html">Upload</a>
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/client-workspace.html">Client Workspace</a>
+    <a class="active" href="/upload.html">Upload</a>
+    <a href="/mileage-log.html">Mileage</a>
+    <a href="/admin.html">Admin</a>
   </nav>
   <main>
-    <section class="card">
+    <section class="hero-panel">
+      <div class="hero-card">
+        <span class="pts-kicker">Document Vault</span>
+        <h2>Secure upload, then Hermes queues the review.</h2>
+        <p>Use the client ID and tax year assigned by PTS. After upload, the file is stored and marked for document intake review.</p>
+        <div class="metric-grid">
+          <div class="metric"><strong>01</strong><span>Upload</span></div>
+          <div class="metric"><strong>02</strong><span>Store</span></div>
+          <div class="metric"><strong>03</strong><span>Queue</span></div>
+          <div class="metric"><strong>04</strong><span>Review</span></div>
+        </div>
+      </div>
+      <aside class="hero-aside">
+        <div class="card card-cyan"><span class="status-pill">Hermes Review</span><h3>What happens next</h3><p>Hermes organizes the intake queue so the tax team can review evidence, missing items, and next steps.</p></div>
+        <div class="card"><h3>Evidence checklist</h3><ul class="checklist"><li>Bank or card statements</li><li>1099s, W-2s, K-1s</li><li>Mileage and business-use records</li><li>Receipts, invoices, contracts</li></ul></div>
+      </aside>
+    </section>
+
+    <section class="card card-purple">
       <h2>Upload Document</h2>
-      <form id="upload-form">
-        <label>Client ID<br><input name="clientId" type="number" min="1" placeholder="Client ID" required></label><br><br>
-        <label>Tax Year<br><input name="taxYear" type="number" min="2000" max="2100" placeholder="Tax Year" required></label><br><br>
-        <label>Choose File<br><input name="file" type="file" required></label><br><br>
-        <button id="upload-button" type="submit">Upload Document</button>
+      <p>Choose one document at a time. Keep the page open until the confirmation appears.</p>
+      <form id="upload-form" class="form-grid">
+        <label>Client ID<input name="clientId" type="number" min="1" placeholder="Example: 1" required></label>
+        <label>Tax Year<input name="taxYear" type="number" min="2000" max="2100" placeholder="Example: 2024" required></label>
+        <label class="full">Choose File<input name="file" type="file" required></label>
+        <div class="full"><button id="upload-button" type="submit">Upload Document</button></div>
       </form>
-      <div id="status" class="card" style="margin-top:1rem;">Ready to upload.</div>
+      <div id="status" class="card card-cyan" style="margin-top:1rem;">Ready to upload.</div>
     </section>
   </main>
   <script>
     const form = document.getElementById('upload-form');
     const button = document.getElementById('upload-button');
     const statusBox = document.getElementById('status');
-
-    function clean(value) {
-      return String(value || '').replace(/[<>&]/g, '');
-    }
-
-    function show(message) {
-      statusBox.innerHTML = message;
-    }
-
+    function clean(value) { return String(value || '').replace(/[<>&]/g, ''); }
+    function show(message, cls) { statusBox.className = 'card ' + (cls || 'card-cyan'); statusBox.innerHTML = message; }
     form.addEventListener('submit', async function(event) {
       event.preventDefault();
       button.disabled = true;
       button.textContent = 'Uploading...';
-      show('Uploading...');
-
+      show('<strong>Uploading...</strong><br>Sending document to the secure vault.', 'status-working');
       try {
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: new FormData(form)
-        });
+        const response = await fetch('/api/upload', { method: 'POST', body: new FormData(form) });
         const data = await response.json();
-
-        if (!response.ok || !data.ok) {
-          throw new Error(data.error || 'Upload failed. Please try again.');
-        }
-
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Upload failed. Please try again.');
         const doc = data.document || {};
-        show(
-          '<strong>Upload complete.</strong><br>' +
-          'Document queued for Hermes review.<br><br>' +
-          '<strong>File:</strong> ' + clean(doc.filename) + '<br>' +
-          '<strong>Tax Year:</strong> ' + clean(doc.taxYear) + '<br>' +
-          '<strong>Status:</strong> ' + clean(doc.processingStatus || 'queued')
-        );
+        show('<strong>Upload complete.</strong><br>Document queued for Hermes Review.<div class="pts-status-line"><span><b>File:</b> ' + clean(doc.filename) + '</span><span><b>Tax Year:</b> ' + clean(doc.taxYear) + '</span><span><b>Status:</b> ' + clean(doc.processingStatus || 'queued') + '</span></div>', 'status-success');
         form.reset();
       } catch (error) {
-        show('<strong>Upload could not be completed.</strong><br>' + clean(error.message));
+        show('<strong>Upload could not be completed.</strong><br>' + clean(error.message), 'status-error');
       } finally {
         button.disabled = false;
         button.textContent = 'Upload Document';
