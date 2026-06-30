@@ -1,11 +1,11 @@
-name = "pts-cloudflare-portal"
+name = "pts-client-tools"
 compatibility_date = "2026-06-30"
 pages_build_output_dir = "."
 
 [[d1_databases]]
 binding = "DB"
 database_name = "pts_tax_lab"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "d78a145c-5f7a-4822-b7e1-8713343c9778"
 
 [[r2_buckets]]
 binding = "DOCS"
@@ -13,4 +13,4 @@ bucket_name = "pts-documents"
 
 [[kv_namespaces]]
 binding = "PTS_KV"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "e55023af345643c9aa6bb8173c86bdd6"
