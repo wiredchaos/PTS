@@ -1,6 +1,7 @@
 import { classifyDocument, buildR2Key } from '../_lib/documents.js';
+import { classifyIntakeDocument, sha256Hex } from '../_lib/intake.js';
 import { jsonResponse, validationError } from '../_lib/http.js';
-import { ensureClientExists, insertDocument } from '../_lib/db.js';
+import { ensureClientExists, findDuplicateDocument, insertDocument, enqueueDocument } from '../_lib/db.js';
 
 const MAX_FUTURE_TAX_YEAR_OFFSET = 2; // allows near-term planning/estimated filings
 
@@ -41,10 +42,21 @@ export async function onRequestPost(context) {
     }
 
     try {
+      const bytes = await file.arrayBuffer();
+      const fileHash = await sha256Hex(bytes);
+      const duplicate = await findDuplicateDocument(env.DB, { clientId, taxYear, fileHash });
+      if (duplicate) {
+        completed += 1;
+        results.push({ ok: true, duplicate: true, documentId: duplicate.id, filename: file.name, message: 'Duplicate already received. No new Hermes intake work was queued.' });
+        continue;
+      }
+
       const { extension, classification } = classifyDocument({ filename: file.name, mimeType: file.type });
+      const intake = classifyIntakeDocument({ filename: file.name, mimeType: file.type, metadata: { extension } });
       const storageKey = buildR2Key({ clientId, taxYear, filename: file.name });
-      await env.DOCS.put(storageKey, await file.arrayBuffer(), {
-        httpMetadata: { contentType: file.type || 'application/octet-stream' }
+      await env.DOCS.put(storageKey, bytes, {
+        httpMetadata: { contentType: file.type || 'application/octet-stream' },
+        customMetadata: { fileHash, clientId: String(clientId), taxYear: String(taxYear) }
       });
 
       const documentId = await insertDocument(env.DB, {
@@ -55,13 +67,14 @@ export async function onRequestPost(context) {
         extension,
         storageKey,
         size: file.size,
-        classification
+        classification: intake.classification || classification,
+        fileHash
       });
 
-      await env.DB.prepare('INSERT INTO processing_queue (document_id, status) VALUES (?, ?)').bind(documentId, 'queued').run();
+      await enqueueDocument(env.DB, documentId);
 
       completed += 1;
-      results.push({ ok: true, documentId, filename: file.name, classification });
+      results.push({ ok: true, duplicate: false, documentId, filename: file.name, classification: intake.classification, requiresHumanReview: intake.requiresHumanReview });
     } catch (error) {
       failed += 1;
       results.push({ ok: false, filename: file.name, error: String(error) });
