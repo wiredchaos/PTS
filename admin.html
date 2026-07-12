@@ -15,6 +15,7 @@
     <li><a href="/clients.html">Client Manager</a></li>
     <li><a href="/universal-processor.html">Universal Processor</a></li>
     <li><a href="/admin.html#tax-analysis">Tax Analysis</a></li>
+    <li><a href="/admin.html#intake-dashboard">Hermes Intake Dashboard</a></li>
     <li><a href="/admin.html#engagement-letter">Engagement Letter Generator</a></li>
     <li><a href="/gamma.html">Gamma Generator</a></li>
     <li><a href="/mcp-registry.html">MCP Registry</a></li>
@@ -22,9 +23,38 @@
     <li><a href="/admin.html#system-settings">System Settings</a></li>
   </ul></section>
   <section class="card" id="tax-analysis"><h2>Tax Analysis</h2><p>Run or queue client tax analysis workflows from this section.</p></section>
+  <section class="card card-purple" id="intake-dashboard"><h2>Hermes Intake Dashboard</h2><p>Review recently uploaded documents, classifications, duplicate flags, queue status, and human-review needs.</p><button id="refresh-intake" type="button">Refresh Intake Queue</button><div id="intake-status" class="card card-cyan" style="margin-top:1rem;">Loading intake dashboard...</div><div id="intake-list" class="metric-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));"></div></section>
   <section class="card" id="engagement-letter"><h2>Engagement Letter Generator</h2><p>Placeholder for credential-aware engagement letter generation.</p></section>
   <section class="card" id="resolution-workflow"><h2>Resolution Workflow</h2><p>Resolution operations are available only for clients with case type resolution.</p></section>
   <section class="card" id="system-settings"><h2>System Settings</h2><p>Manage Cloudflare KV feature flags and runtime configuration.</p></section>
 </main>
+<script>
+  const intakeList = document.getElementById('intake-list');
+  const intakeStatus = document.getElementById('intake-status');
+  const refreshButton = document.getElementById('refresh-intake');
+  function clean(value) { return String(value || '').replace(/[<>&]/g, ''); }
+  async function processIntake(id) {
+    intakeStatus.textContent = 'Processing document #' + id + ' with Hermes intake...';
+    const response = await fetch('/api/hermes/intake/process', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ documentId: id }) });
+    const data = await response.json();
+    intakeStatus.textContent = data.message || (response.ok ? 'Intake processing complete.' : 'Intake processing failed.');
+    await loadIntake();
+  }
+  async function loadIntake() {
+    try {
+      const response = await fetch('/api/hermes/intake/dashboard');
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Unable to load intake dashboard.');
+      const docs = data.documents || [];
+      intakeStatus.textContent = docs.length ? 'Showing recently uploaded documents.' : 'No uploaded documents found.';
+      intakeList.innerHTML = docs.map((doc) => '<article class="metric"><strong>#' + clean(doc.id) + '</strong><span>' + clean(doc.original_filename) + '</span><p><b>Class:</b> ' + clean(doc.classification || 'Pending') + '<br><b>Queue:</b> ' + clean(doc.queue_status || doc.processing_status || 'queued') + '<br><b>Duplicate:</b> ' + (doc.duplicate_of_document_id ? 'Yes' : 'No') + '<br><b>Human review:</b> ' + (doc.requires_human_review ? 'Yes' : 'No') + '<br><b>Bucket:</b> ' + clean(doc.workpaper_bucket || 'Pending') + '</p><button type="button" data-doc="' + clean(doc.id) + '">Process Intake</button></article>').join('');
+      intakeList.querySelectorAll('button[data-doc]').forEach((button) => button.addEventListener('click', () => processIntake(Number(button.dataset.doc))));
+    } catch (error) {
+      intakeStatus.textContent = error.message;
+    }
+  }
+  refreshButton.addEventListener('click', loadIntake);
+  loadIntake();
+</script>
 </body>
 </html>

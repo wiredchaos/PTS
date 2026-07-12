@@ -66,7 +66,12 @@
         const data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.error || 'Upload failed. Please try again.');
         const doc = data.document || {};
-        show('<strong>Upload complete.</strong><br>Document queued for Hermes Review.<div class="pts-status-line"><span><b>File:</b> ' + clean(doc.filename) + '</span><span><b>Tax Year:</b> ' + clean(doc.taxYear) + '</span><span><b>Status:</b> ' + clean(doc.processingStatus || 'queued') + '</span></div>', 'status-success');
+        if (data.duplicate) {
+          show('<strong>Duplicate already received.</strong><br>We already have this file for the selected tax year. No duplicate Hermes work was queued.<div class="pts-status-line"><span><b>File:</b> ' + clean(doc.filename) + '</span><span><b>Status:</b> Duplicate already received</span></div>', 'status-working');
+        } else {
+          const review = doc.requiresHumanReview ? '<br><strong>Needs tax team review.</strong>' : '';
+          show('<strong>Upload complete.</strong><br>Stored securely.<br>Queued for Hermes intake.' + review + '<div class="pts-status-line"><span><b>File:</b> ' + clean(doc.filename) + '</span><span><b>Tax Year:</b> ' + clean(doc.taxYear) + '</span><span><b>Status:</b> ' + clean(doc.processingStatus || 'queued') + '</span></div>', 'status-success');
+        }
         form.reset();
       } catch (error) {
         show('<strong>Upload could not be completed.</strong><br>' + clean(error.message), 'status-error');

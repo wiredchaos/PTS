@@ -1,6 +1,7 @@
 import { classifyDocument, buildR2Key } from '../_lib/documents.js';
+import { classifyIntakeDocument, sha256Hex } from '../_lib/intake.js';
 import { jsonResponse, validationError } from '../_lib/http.js';
-import { ensureClientExists, insertDocument } from '../_lib/db.js';
+import { ensureClientExists, findDuplicateDocument, insertDocument, enqueueDocument } from '../_lib/db.js';
 
 const MAX_FUTURE_TAX_YEAR_OFFSET = 2; // allows near-term planning/estimated filings
 
@@ -23,11 +24,31 @@ export async function onRequestPost(context) {
   const client = await ensureClientExists(env.DB, clientId);
   if (!client) return jsonResponse(404, { ok: false, error: 'Client not found' });
 
+  const bytes = await file.arrayBuffer();
+  const fileHash = await sha256Hex(bytes);
+  const duplicate = await findDuplicateDocument(env.DB, { clientId, taxYear, fileHash });
+  if (duplicate) {
+    return jsonResponse(200, {
+      ok: true,
+      duplicate: true,
+      message: 'Duplicate already received. No new Hermes intake work was queued.',
+      document: {
+        id: duplicate.id,
+        clientId,
+        taxYear,
+        filename: duplicate.original_filename,
+        processingStatus: duplicate.processing_status || 'queued',
+      },
+    });
+  }
+
   const { extension, classification } = classifyDocument({ filename: file.name, mimeType: file.type });
+  const intake = classifyIntakeDocument({ filename: file.name, mimeType: file.type, metadata: { extension } });
   const storageKey = buildR2Key({ clientId, taxYear, filename: file.name });
 
-  await env.DOCS.put(storageKey, await file.arrayBuffer(), {
-    httpMetadata: { contentType: file.type || 'application/octet-stream' }
+  await env.DOCS.put(storageKey, bytes, {
+    httpMetadata: { contentType: file.type || 'application/octet-stream' },
+    customMetadata: { fileHash, clientId: String(clientId), taxYear: String(taxYear) },
   });
 
   const documentId = await insertDocument(env.DB, {
@@ -38,13 +59,16 @@ export async function onRequestPost(context) {
     extension,
     storageKey,
     size: file.size,
-    classification
+    classification: intake.classification || classification,
+    fileHash,
   });
 
-  await env.DB.prepare('INSERT INTO processing_queue (document_id, status) VALUES (?, ?)').bind(documentId, 'queued').run();
+  await enqueueDocument(env.DB, documentId);
 
   return jsonResponse(201, {
     ok: true,
+    duplicate: false,
+    message: 'Upload complete. Stored securely and queued for Hermes intake.',
     document: {
       id: documentId,
       clientId,
@@ -52,8 +76,9 @@ export async function onRequestPost(context) {
       filename: file.name,
       mimeType: file.type,
       extension,
-      classification,
-      processingStatus: 'queued'
-    }
+      classification: intake.classification,
+      requiresHumanReview: intake.requiresHumanReview,
+      processingStatus: 'queued',
+    },
   });
 }
